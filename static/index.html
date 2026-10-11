@@ -1,0 +1,472 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>SuryaSetu</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+  <link rel="stylesheet" href="/static/styles.css">
+</head>
+<body>
+  <!-- Ambient background glow -->
+  <div class="ambient-glow"></div>
+
+  <!-- Navigation Bar (Apple/Vercel Floating Glass) -->
+  <nav class="navbar">
+    <div class="nav-container">
+      <div class="brand">
+        <div class="brand-mark">
+          <i class="fa-solid fa-sun"></i>
+        </div>
+        <div class="brand-text">
+          <span class="brand-title" data-i18n="brandTitle">SuryaSetu</span>
+        </div>
+      </div>
+
+      <div class="nav-actions">
+        <!-- AI Engine Status Badge -->
+        <div class="status-pill" id="header-ai-badge">
+          <span class="pulse-dot"></span>
+          <span id="header-ai-badge-text">PM Surya Ghar Ready</span>
+        </div>
+
+        <!-- Language Switcher Pill -->
+        <div class="lang-toggle" role="radiogroup" aria-label="Language selection">
+          <button type="button" class="lang-btn active" data-lang="en">EN</button>
+          <button type="button" class="lang-btn" data-lang="hi">हिंदी</button>
+        </div>
+      </div>
+    </div>
+  </nav>
+
+  <!-- Main Canvas -->
+  <main class="page-container">
+    <!-- Hero Header -->
+    <header class="hero-section">
+      <div class="hero-badge">
+        <i class="fa-solid fa-bolt-lightning"></i>
+        <span data-i18n="heroBadge">PM Surya Ghar Muft Bijli Yojana (2025–2026)</span>
+      </div>
+      <h1 class="hero-headline" data-i18n="heroHeadline">
+        Cut your electricity bill<br>
+        <span class="gradient-text">by up to 90% with solar.</span>
+      </h1>
+      <p class="hero-subline" data-i18n="heroSubline">
+        Enter your bill details or upload a photo to calculate system size, government subsidies, monthly savings, and loan EMI.
+      </p>
+    </header>
+
+    <!-- Main Card Container -->
+    <div class="app-card">
+      <!-- Segmented Tab Control (Vercel Style) -->
+      <div class="segmented-control" role="tablist">
+        <button type="button" class="segment-btn active" id="tab-btn-manual" role="tab" aria-selected="true" aria-controls="tab-manual">
+          <i class="fa-solid fa-pen-to-square"></i>
+          <span data-i18n="tabManual">Manual Entry</span>
+        </button>
+        <button type="button" class="segment-btn" id="tab-btn-photo" role="tab" aria-selected="false" aria-controls="tab-photo">
+          <i class="fa-solid fa-camera"></i>
+          <span data-i18n="tabPhoto">Scan Bill Photo</span>
+          <span class="subtle-badge">AI</span>
+        </button>
+      </div>
+
+      <!-- Tab 1: Manual Entry Form -->
+      <div class="tab-pane active" id="tab-manual" role="tabpanel">
+        <!-- Quick Preset Chips -->
+        <div class="presets-bar" id="presets-bar">
+          <span class="presets-label"><i class="fa-solid fa-wand-magic-sparkles"></i> <span data-i18n="presetsLabel">Quick Samples:</span></span>
+          <div class="preset-chips">
+            <button type="button" class="chip-btn" data-preset="2bhk">
+              <span data-i18n="preset2bhk">2 BHK Flat</span>
+              <span class="chip-units">280 kWh</span>
+            </button>
+            <button type="button" class="chip-btn" data-preset="3bhk">
+              <span data-i18n="preset3bhk">3 BHK + AC</span>
+              <span class="chip-units">450 kWh</span>
+            </button>
+            <button type="button" class="chip-btn" data-preset="heavy">
+              <span data-i18n="presetHeavy">Heavy Load</span>
+              <span class="chip-units">720 kWh</span>
+            </button>
+          </div>
+        </div>
+
+        <div id="photo-extracted-banner" class="banner banner-success hidden">
+          <div class="banner-body">
+            <i class="fa-solid fa-circle-check banner-icon"></i>
+            <div>
+              <strong data-i18n="bannerSuccessTitle">Bill Scanned Successfully</strong>
+              <p id="photo-confidence-text">Extracted values populated below. Please review before calculating.</p>
+            </div>
+          </div>
+          <button type="button" class="banner-dismiss" id="btn-close-banner">&times;</button>
+        </div>
+
+        <form id="solar-form" novalidate>
+          <div class="form-layout">
+            <!-- State Selector -->
+            <div class="field-item">
+              <label for="state" class="field-label">
+                <span data-i18n="labelState">State / DISCOM Region</span>
+                <span class="star">*</span>
+              </label>
+              <div class="input-box">
+                <i class="fa-solid fa-location-dot field-icon"></i>
+                <select id="state" name="state" required class="form-input">
+                  <option value="" data-i18n="optSelectState">Select your state</option>
+                  <option value="MH">Maharashtra (MSEDCL)</option>
+                  <option value="RJ">Rajasthan (JVVNL / AVVNL / JdVVNL)</option>
+                  <option value="UP">Uttar Pradesh (UPPCL)</option>
+                  <option value="DL">Delhi (BSES / TPDDL)</option>
+                  <option value="Other">Other / National Average</option>
+                </select>
+                <i class="fa-solid fa-chevron-down select-arrow"></i>
+              </div>
+              <div class="field-error" id="error-state"></div>
+            </div>
+
+            <!-- Units Consumed -->
+            <div class="field-item">
+              <label for="units" class="field-label">
+                <span data-i18n="labelUnits">Monthly Units Consumed</span>
+                <span class="star" id="units-req-star">*</span>
+              </label>
+              <div class="input-box">
+                <i class="fa-solid fa-bolt field-icon"></i>
+                <input type="number" id="units" name="units" min="1" max="5000" placeholder="e.g. 450" class="form-input">
+                <span class="input-tag">kWh</span>
+              </div>
+              <span class="field-caption" data-i18n="captionUnits">Found under "Billed Units" or "Units Consumed".</span>
+              <div class="field-error" id="error-units"></div>
+            </div>
+
+            <!-- Billing Days -->
+            <div class="field-item">
+              <label for="billing_days" class="field-label">
+                <span data-i18n="labelDays">Billing Period</span>
+              </label>
+              <div class="input-box">
+                <i class="fa-regular fa-calendar-days field-icon"></i>
+                <input type="number" id="billing_days" name="billing_days" min="20" max="62" value="30" placeholder="30" class="form-input">
+                <span class="input-tag">days</span>
+              </div>
+              <span class="field-caption" data-i18n="captionDays">Standard monthly cycle is 30 days.</span>
+              <div class="field-error" id="error-billing_days"></div>
+            </div>
+
+            <!-- Amount Payable -->
+            <div class="field-item">
+              <label for="amount_payable" class="field-label">
+                <span data-i18n="labelAmount">Total Bill Amount</span>
+                <span class="opt-label" data-i18n="optLabel">Optional</span>
+              </label>
+              <div class="input-box">
+                <i class="fa-solid fa-indian-rupee-sign field-icon"></i>
+                <input type="number" id="amount_payable" name="amount_payable" min="1" placeholder="e.g. 3850" class="form-input">
+                <span class="input-tag">INR</span>
+              </div>
+              <span class="field-caption" data-i18n="captionAmount">Can estimate units if kWh is unknown.</span>
+              <div class="field-error" id="error-amount_payable"></div>
+            </div>
+
+            <!-- Sanctioned Load -->
+            <div class="field-item">
+              <label for="sanctioned_load" class="field-label">
+                <span data-i18n="labelLoad">Sanctioned Load</span>
+                <span class="opt-label" data-i18n="optLabel">Optional</span>
+              </label>
+              <div class="input-box">
+                <i class="fa-solid fa-gauge-high field-icon"></i>
+                <input type="number" step="0.1" id="sanctioned_load" name="sanctioned_load" min="0.5" placeholder="e.g. 3.0" class="form-input">
+                <span class="input-tag">kW</span>
+              </div>
+              <span class="field-caption" data-i18n="captionLoad">Helps verify grid load compatibility.</span>
+              <div class="field-error" id="error-sanctioned_load"></div>
+            </div>
+
+            <!-- Fixed Charges -->
+            <div class="field-item">
+              <label for="fixed_charges" class="field-label">
+                <span data-i18n="labelFixed">Fixed / Meter Charges</span>
+                <span class="opt-label" data-i18n="optLabel">Optional</span>
+              </label>
+              <div class="input-box">
+                <i class="fa-solid fa-receipt field-icon"></i>
+                <input type="number" step="1" id="fixed_charges" name="fixed_charges" min="0" placeholder="e.g. 150" class="form-input">
+                <span class="input-tag">INR</span>
+              </div>
+              <span class="field-caption" data-i18n="captionFixed">Defaults to state tariff baseline.</span>
+              <div class="field-error" id="error-fixed_charges"></div>
+            </div>
+
+            <!-- Past Months Units -->
+            <div class="field-item field-span-2">
+              <label for="past_units" class="field-label">
+                <span data-i18n="labelPast">Past Months' Consumption History</span>
+                <span class="opt-label" data-i18n="optLabel">Optional</span>
+              </label>
+              <div class="input-box">
+                <i class="fa-solid fa-chart-line field-icon"></i>
+                <input type="text" id="past_units" name="past_units" placeholder="e.g. 420, 390, 480, 510, 460" class="form-input">
+              </div>
+              <span class="field-caption" data-i18n="captionPast">Comma-separated kWh of past months for seasonal averaging.</span>
+              <div class="field-error" id="error-past_units"></div>
+            </div>
+          </div>
+
+          <!-- Submit CTA -->
+          <div class="form-cta">
+            <button type="submit" class="cta-button" id="btn-submit">
+              <span data-i18n="btnCalculate">Calculate Solar Recommendation</span>
+              <i class="fa-solid fa-arrow-right"></i>
+            </button>
+          </div>
+        </form>
+      </div>
+
+      <!-- Tab 2: Scan Bill Photo -->
+      <div class="tab-pane" id="tab-photo" role="tabpanel">
+        <div class="photo-container">
+          <div class="drop-card" id="drop-zone">
+            <div class="drop-icon-box">
+              <i class="fa-solid fa-cloud-arrow-up"></i>
+            </div>
+            <h3 class="drop-title" data-i18n="photoDropTitle">Upload your electricity bill</h3>
+            <p class="drop-desc" data-i18n="photoDropDesc">Drag & drop your bill photo here, or browse files</p>
+            <p class="drop-hint" data-i18n="photoDropHint">Supports JPEG, PNG, WEBP • Automatically compressed</p>
+
+            <label for="bill-photo-input" class="browse-button">
+              <i class="fa-solid fa-camera"></i>
+              <span data-i18n="photoBrowseBtn">Choose Photo or Take Picture</span>
+            </label>
+            <input type="file" id="bill-photo-input" accept="image/*" capture="environment" class="hidden-input">
+          </div>
+
+          <!-- Preview & Progress Box -->
+          <div id="photo-preview-box" class="preview-card hidden">
+            <div class="preview-row">
+              <img id="image-preview" src="" alt="Bill preview" class="preview-thumb">
+              <div class="preview-info">
+                <h4 id="preview-filename">bill.jpg</h4>
+                <p id="preview-filesize">Optimizing image size...</p>
+                <div class="meter-bar">
+                  <div class="meter-fill" id="upload-progress-fill"></div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Photo Error Notice -->
+          <div id="photo-error" class="banner banner-error hidden">
+            <i class="fa-solid fa-triangle-exclamation banner-icon"></i>
+            <span id="photo-error-message">Could not read this photo. Please enter details manually.</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Loading State -->
+    <div id="loading-state" class="loading-panel hidden">
+      <div class="modern-spinner">
+        <div class="spinner-ring"></div>
+        <div class="spinner-core">
+          <i class="fa-solid fa-sun"></i>
+        </div>
+      </div>
+      <h3 class="loading-title" data-i18n="loadingTitle">Calculating Solar Feasibility...</h3>
+      <p class="loading-text" data-i18n="loadingText">Analyzing DISCOM tariff slabs, solar irradiance, PM Surya Ghar subsidy, and return on investment.</p>
+    </div>
+
+    <!-- Results / Verdict Section -->
+    <section id="results-section" class="verdict-wrapper hidden">
+      <div class="verdict-container">
+        <!-- Result Header -->
+        <div class="verdict-top">
+          <div class="verdict-status-pill" id="verdict-status-badge">
+            <i class="fa-solid fa-circle-check"></i>
+            <span id="verdict-status-text">High Feasibility</span>
+          </div>
+          <h2 class="verdict-title" id="verdict-headline">
+            A 3 kW system can cut your bill from ₹3,850 to about ₹450
+          </h2>
+          <p class="verdict-subtitle" id="verdict-subheadline">
+            Calculated using current state tariff slabs and PM Surya Ghar guidelines.
+          </p>
+        </div>
+
+        <!-- Visual Bill Comparison Bar -->
+        <div class="bill-compare-card" id="bill-compare-card">
+          <div class="compare-header">
+            <span class="compare-title"><i class="fa-solid fa-scale-balanced"></i> <span data-i18n="compareTitle">Monthly Electricity Bill Impact</span></span>
+            <span class="compare-savings-badge" id="compare-percent-cut">-88% Reduction</span>
+          </div>
+          <div class="compare-bars">
+            <div class="bar-group">
+              <div class="bar-label-row">
+                <span data-i18n="compareBeforeLabel">Current Monthly Bill</span>
+                <strong id="compare-before-val">₹3,850</strong>
+              </div>
+              <div class="bar-track">
+                <div class="bar-fill bar-fill-before" id="bar-fill-before" style="width: 100%;"></div>
+              </div>
+            </div>
+            <div class="bar-group">
+              <div class="bar-label-row">
+                <span data-i18n="compareAfterLabel">Estimated Bill with Solar</span>
+                <strong id="compare-after-val">₹450</strong>
+              </div>
+              <div class="bar-track">
+                <div class="bar-fill bar-fill-after" id="bar-fill-after" style="width: 12%;"></div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- AI Advisor Insights Card -->
+        <div class="ai-insight-card" id="ai-insight-box">
+          <div class="ai-insight-header">
+            <div class="ai-tag">
+              <i class="fa-solid fa-sparkles"></i>
+              <span data-i18n="aiAdvisorTag">AI Advisor Verdict</span>
+            </div>
+            <span class="ai-model-tag" id="ai-model-tag">Gemini 3.5 Flash</span>
+          </div>
+          <p class="ai-insight-text" id="ai-explanation-text">
+            Generating personalized assessment...
+          </p>
+        </div>
+
+        <!-- Bento Grid of Key Metrics -->
+        <div class="bento-grid">
+          <!-- Card 1: System Size -->
+          <div class="bento-card">
+            <div class="bento-header">
+              <span class="bento-label" data-i18n="bentoSystemLabel">Recommended Capacity</span>
+              <div class="bento-icon-pill amber">
+                <i class="fa-solid fa-solar-panel"></i>
+              </div>
+            </div>
+            <div class="bento-value" id="val-system-size">3.0 kW</div>
+            <div class="bento-caption" id="val-roof-area">Requires ~300 sq.ft shade-free roof</div>
+          </div>
+
+          <!-- Card 2: Monthly Savings -->
+          <div class="bento-card bento-card-highlight">
+            <div class="bento-header">
+              <span class="bento-label" data-i18n="bentoSavingsLabel">Estimated Monthly Savings</span>
+              <div class="bento-icon-pill emerald">
+                <i class="fa-solid fa-arrow-trend-down"></i>
+              </div>
+            </div>
+            <div class="bento-value text-emerald" id="val-monthly-savings">₹3,400</div>
+            <div class="bento-caption" id="val-annual-savings">₹40,800 saved per year</div>
+          </div>
+
+          <!-- Card 3: Government Subsidy -->
+          <div class="bento-card">
+            <div class="bento-header">
+              <span class="bento-label" data-i18n="bentoSubsidyLabel">PM Surya Ghar Subsidy</span>
+              <div class="bento-icon-pill blue">
+                <i class="fa-solid fa-hand-holding-dollar"></i>
+              </div>
+            </div>
+            <div class="bento-value text-blue" id="val-subsidy">₹78,000</div>
+            <div class="bento-caption" id="val-net-cost">Net investment: ₹1,02,000</div>
+          </div>
+
+          <!-- Card 4: Payback Period -->
+          <div class="bento-card">
+            <div class="bento-header">
+              <span class="bento-label" data-i18n="bentoPaybackLabel">Payback Timeline</span>
+              <div class="bento-icon-pill purple">
+                <i class="fa-solid fa-clock-rotate-left"></i>
+              </div>
+            </div>
+            <div class="bento-value" id="val-payback">2.5 Years</div>
+            <div class="bento-caption" id="val-payback-caption">Free electricity for remaining 22+ yrs</div>
+          </div>
+
+          <!-- Card 5: Green Solar Loan EMI (Full Width) -->
+          <div class="bento-card bento-card-wide">
+            <div class="emi-flex">
+              <div class="emi-left">
+                <div class="bento-header">
+                  <span class="bento-label" data-i18n="bentoEmiLabel">Concessional Solar Loan EMI</span>
+                </div>
+                <div class="bento-value" id="val-emi">₹1,180 / month</div>
+                <div class="bento-caption" data-i18n="bentoEmiCaption">Based on 5.75% p.a. scheme financing over 10-year tenure</div>
+              </div>
+              <div class="emi-pill" id="emi-comparison-pill">
+                <i class="fa-solid fa-circle-check"></i>
+                <span id="val-emi-pill-text">EMI is lower than your monthly savings</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Implementation Roadmap -->
+        <div class="section-box">
+          <div class="section-box-header">
+            <h3 class="section-heading"><i class="fa-solid fa-list-check"></i> <span data-i18n="roadmapHeading">4-Step Implementation Roadmap</span></h3>
+            <span class="section-tag" data-i18n="roadmapTag">Next Steps</span>
+          </div>
+          <div class="roadmap-timeline" id="checklist-items">
+            <!-- Dynamically populated -->
+          </div>
+        </div>
+
+        <!-- Technical Assumptions Accordion / Card -->
+        <div class="section-box">
+          <div class="section-box-header">
+            <h3 class="section-heading"><i class="fa-solid fa-sliders"></i> <span data-i18n="assumptionsHeading">Engineering Assumptions</span></h3>
+            <span class="section-tag" data-i18n="assumptionsTag">Methodology</span>
+          </div>
+          <ul class="clean-bullet-list" id="assumptions-list">
+            <!-- Dynamically populated -->
+          </ul>
+        </div>
+
+        <!-- Bottom Action Buttons -->
+        <div class="verdict-footer-actions">
+          <button type="button" class="btn-clean-primary" onclick="window.print()">
+            <i class="fa-solid fa-arrow-down-to-bracket"></i>
+            <span data-i18n="btnPrint">Print or Save Report</span>
+          </button>
+          <button type="button" class="btn-clean-secondary" id="btn-recalculate">
+            <i class="fa-solid fa-arrow-rotate-left"></i>
+            <span data-i18n="btnRecalculate">Edit Bill Details</span>
+          </button>
+        </div>
+
+        <!-- Official Disclaimer -->
+        <div class="bottom-disclaimer">
+          <i class="fa-solid fa-shield-halved"></i>
+          <p data-i18n="bottomDisclaimer">
+            All figures are algorithmic preliminary estimates for planning purposes under PM Surya Ghar Muft Bijli Yojana benchmarks. Actual generation varies by rooftop tilt, shade obstacles, and DISCOM net-metering approvals.
+          </p>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <!-- Clean Footer -->
+  <footer class="app-footer">
+    <div class="footer-container">
+      <div class="footer-copy">
+        <span data-i18n="footerCopy">© 2026 SuryaSetu. Empowering clean solar energy across India.</span>
+      </div>
+      <div class="footer-links">
+        <a href="https://pmsuryaghar.gov.in" target="_blank" rel="noopener">National Portal</a>
+        <span class="sep">•</span>
+        <a href="#solar-form">Calculator</a>
+      </div>
+    </div>
+  </footer>
+
+  <script src="/static/app.js"></script>
+</body>
+</html>

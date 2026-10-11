@@ -1,0 +1,74 @@
+{
+  "MH": {
+    "name": "Maharashtra",
+    "code": "MH",
+    "discom": "MSEDCL (Mahavitaran)",
+    "domestic_slabs": [
+      { "from_kwh": 0, "to_kwh": 100, "rate_per_kwh": 4.75 },
+      { "from_kwh": 101, "to_kwh": 300, "rate_per_kwh": 10.20 },
+      { "from_kwh": 301, "to_kwh": 500, "rate_per_kwh": 14.50 },
+      { "from_kwh": 501, "to_kwh": null, "rate_per_kwh": 16.60 }
+    ],
+    "fixed_charge_per_month": 128.0,
+    "yield_kwh_per_kw_day": 4.2,
+    "cost_per_kw": 55000.0
+  },
+  "UP": {
+    "name": "Uttar Pradesh",
+    "code": "UP",
+    "discom": "UPPCL (Uttar Pradesh Power Corp)",
+    "domestic_slabs": [
+      { "from_kwh": 0, "to_kwh": 150, "rate_per_kwh": 5.50 },
+      { "from_kwh": 151, "to_kwh": 300, "rate_per_kwh": 6.00 },
+      { "from_kwh": 301, "to_kwh": 500, "rate_per_kwh": 6.50 },
+      { "from_kwh": 501, "to_kwh": null, "rate_per_kwh": 7.00 }
+    ],
+    "fixed_charge_per_month": 110.0,
+    "yield_kwh_per_kw_day": 4.0,
+    "cost_per_kw": 52000.0
+  },
+  "DL": {
+    "name": "Delhi",
+    "code": "DL",
+    "discom": "BSES Rajdhani / Yamuna Power",
+    "domestic_slabs": [
+      { "from_kwh": 0, "to_kwh": 200, "rate_per_kwh": 3.00 },
+      { "from_kwh": 201, "to_kwh": 400, "rate_per_kwh": 4.50 },
+      { "from_kwh": 401, "to_kwh": 800, "rate_per_kwh": 6.50 },
+      { "from_kwh": 801, "to_kwh": 1200, "rate_per_kwh": 7.00 },
+      { "from_kwh": 1201, "to_kwh": null, "rate_per_kwh": 8.00 }
+    ],
+    "fixed_charge_per_month": 100.0,
+    "yield_kwh_per_kw_day": 4.3,
+    "cost_per_kw": 54000.0
+  },
+  "RJ": {
+    "name": "Rajasthan",
+    "code": "RJ",
+    "discom": "JVVNL / AVVNL / JdVVNL (Rajasthan Discoms)",
+    "domestic_slabs": [
+      { "from_kwh": 0, "to_kwh": 50, "rate_per_kwh": 4.75 },
+      { "from_kwh": 51, "to_kwh": 150, "rate_per_kwh": 6.50 },
+      { "from_kwh": 151, "to_kwh": 300, "rate_per_kwh": 7.35 },
+      { "from_kwh": 301, "to_kwh": 500, "rate_per_kwh": 7.65 },
+      { "from_kwh": 501, "to_kwh": null, "rate_per_kwh": 7.95 }
+    ],
+    "fixed_charge_per_month": 130.0,
+    "yield_kwh_per_kw_day": 4.8,
+    "cost_per_kw": 52000.0
+  },
+  "_other": {
+    "name": "Other / National Average",
+    "code": "_other",
+    "discom": "State Discom (National Average)",
+    "domestic_slabs": [
+      { "from_kwh": 0, "to_kwh": 100, "rate_per_kwh": 4.50 },
+      { "from_kwh": 101, "to_kwh": 300, "rate_per_kwh": 6.50 },
+      { "from_kwh": 301, "to_kwh": 500, "rate_per_kwh": 8.00 },
+      { "from_kwh": 501, "to_kwh": null, "rate_per_kwh": 9.50 }
+    ],
+    "fixed_charge_per_month": 100.0,
+    "yield_kwh_per_kw_day": 4.2,
+    "cost_per_kw": 55000.0
+  }
+}

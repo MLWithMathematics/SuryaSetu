@@ -1,0 +1,12 @@
+fastapi
+uvicorn[standard]
+python-multipart
+pydantic
+google-genai
+groq
+openai
+python-dotenv
+boto3
+strands-agents
+strands-agents-tools
+pytest
