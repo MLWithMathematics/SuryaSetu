@@ -155,7 +155,7 @@ async def _extract_with_nvidia(image_bytes: bytes, content_type: str) -> dict:
     data_url = f"data:{mime};base64,{b64}"
 
     # Default to NVIDIA NIM's active Image-to-Text VLM endpoint
-    model_name = os.environ.get("NVIDIA_VISION_MODEL", "Qwen/Qwen-Image-2512")
+    model_name = os.environ.get("NVIDIA_VISION_MODEL", "meta/llama-3.2-11b-vision-instruct")
 
     resp = client.chat.completions.create(
         model=model_name,

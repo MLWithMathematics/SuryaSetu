@@ -145,7 +145,7 @@ def _call_nvidia(user_prompt: str, system_prompt: str) -> str:
             base_url="https://integrate.api.nvidia.com/v1",
             api_key=api_key,
         )
-        model_name = os.environ.get("NVIDIA_MODEL", "meta/llama-3.2-11b-vision-instruct")
+        model_name = os.environ.get("NVIDIA_MODEL", "nvidia/llama-3.1-nemotron-70b-instruct")
 
         resp = client.chat.completions.create(
             model=model_name,

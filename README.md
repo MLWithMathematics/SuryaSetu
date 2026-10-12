@@ -45,9 +45,14 @@ By simply uploading an electricity bill photo or entering consumption numbers, h
   - 🛡️ **Offline Fallback:** 100% offline, deterministic bilingual templates guaranteeing **zero downtime**.
 
 ### 3. 📷 Multimodal Bill Photo OCR (`extract.py`)
-- Upload or capture any residential electricity bill (JPEG, PNG, WEBP).
-- **Client-Side Image Optimization:** Resizes images to max 1280px via HTML5 Canvas before uploading, ensuring fast transfers and low token consumption.
-- **Zero-Hallucination Extraction:** Vision models extract DISCOM state, billed units, billing days, bill amount, sanctioned load, and fixed charges directly into form fields for user verification.
+- **Upload or Capture Bills:** Supports camera snapshots and file uploads (JPEG, PNG, WEBP) of any Indian electricity bill.
+- **Client-Side Image Preprocessing:** HTML5 Canvas automatically downscales high-res mobile photos to max 1280px before upload, cutting payload sizes by ~85% for lightning-fast inference.
+- **Updated Production Vision Models for Images:**
+  - 🌟 **Google Gemini Vision (`gemini-3.5-flash` / `gemini-flash-latest`):** The primary free vision engine via the official `google-genai` SDK. Fast, high-resolution visual understanding tailored for Indian DISCOM billing formats (*MSEDCL, UPPCL, BSES, JVVNL, BESCOM*). Replaces discontinued `gemini-2.0-flash` with automatic fallback to `gemini-flash-latest` and `gemini-3.8-flash`.
+  - 🟢 **NVIDIA NIM Vision (`meta/llama-3.2-11b-vision-instruct`):** Free-tier open multimodal vision instruct model served via NVIDIA's OpenAI-compatible NIM endpoint (`https://integrate.api.nvidia.com/v1`). Excels at dense tabular document reading, tariff slab extraction, and numeric meter OCR. *(Note: uses multimodal vision instruct rather than diffusion generation models like Qwen-Image which lack OCR capabilities).*
+  - ☁️ **AWS Bedrock Claude 3.5 Sonnet Vision (`anthropic.claude-3-5-sonnet-20241022-v2:0`):** Enterprise-grade multimodal extraction powered by the AWS Bedrock Converse API with native byte-level image encoding.
+  - 🛡️ **Fault-Tolerant Vision Fallback Chain:** If the primary vision provider encounters rate limits or errors, the parser seamlessly falls back through the remaining configured providers before returning an intuitive manual review prompt.
+- **Zero-Hallucination Extraction:** Strictly structured JSON extraction parses: **State code**, **Billed Units (kWh)**, **Billing Days**, **Amount Payable (₹)**, **Sanctioned Load (kW)**, **Fixed Charges (₹)**, and an OCR confidence score. Extracted values pre-populate form fields so users can review before calculating.
 
 ### 4. 🎨 Minimalist Apple / Vercel Light UI (`static/`)
 - Pure Vanilla JavaScript & CSS (Zero bulky UI frameworks).
@@ -71,7 +76,7 @@ flowchart TD
     end
 
     subgraph Backend ["FastAPI Application (app.py)"]
-        Canvas --> |POST /analyze| Extract["Vision OCR (extract.py)"]
+        Canvas --> |POST /analyze| Extract["Vision OCR Pipeline (extract.py)"]
         FormVal --> |POST /recommend| API["Recommend API"]
         
         API --> Calc["Deterministic Calc Engine (calc.py)"]
@@ -80,10 +85,16 @@ flowchart TD
         Calc --> |Structured Verdict| Agent["Agent Dispatcher (agent.py)"]
     end
 
-    subgraph AI_Providers ["Multi-Model AI Layer"]
+    subgraph Vision_OCR_Models ["Multimodal Vision Layer (Images)"]
+        Extract -.-> |Priority 1| V_Gemini["Gemini 3.5 Flash / Flash Latest"]
+        Extract -.-> |Priority 2| V_NVIDIA["NVIDIA NIM Llama 3.2 11B Vision Instruct"]
+        Extract -.-> |Priority 3| V_Bedrock["AWS Bedrock Claude 3.5 Sonnet Vision"]
+    end
+
+    subgraph AI_Text_Advisors ["Advisory Agent Layer (Text & Reasoning)"]
         Agent -.-> |Option 1| Gemini["Google Gemini 3.5 Flash"]
-        Agent -.-> |Option 2| Groq["Groq Llama 3.3 70B"]
-        Agent -.-> |Option 3| NVIDIA["NVIDIA NIM Nemotron / Qwen"]
+        Agent -.-> |Option 2| Groq["Groq Llama 3.3 70B Versatile"]
+        Agent -.-> |Option 3| NVIDIA["NVIDIA NIM Nemotron 70B / Llama 3.1"]
         Agent -.-> |Option 4| Bedrock["AWS Strands BedrockModel"]
         Agent -.-> |Offline| Fallback["Local Bilingual Template"]
     end
@@ -145,16 +156,28 @@ cp .env.example .env
 Open `.env` and add **any one** (or all) of the free API keys:
 
 ```env
-# Option 1: Google Gemini (Free at https://aistudio.google.com/app/apikey)
+# Option 1: Google Gemini (Recommended - Fast OCR for bill images + bilingual reasoning)
+# Free at: https://aistudio.google.com/app/apikey
 GEMINI_API_KEY=AIzaSy...
+GEMINI_VISION_MODEL=gemini-3.5-flash        # Image OCR: gemini-3.5-flash or gemini-flash-latest
+GEMINI_MODEL=gemini-3.5-flash               # Text reasoning: gemini-3.5-flash
 
-# Option 2: Groq (Free at https://console.groq.com/keys)
-GROQ_API_KEY=gsk_...
-
-# Option 3: NVIDIA NIM (Free at https://build.nvidia.com)
+# Option 2: NVIDIA NIM (Free tier for multimodal Vision & Text)
+# Free at: https://build.nvidia.com
 NVIDIA_API_KEY=nvapi-...
-NVIDIA_MODEL=nvidia/llama-3.1-nemotron-70b-instruct
-NVIDIA_VISION_MODEL=meta/llama-3.2-11b-vision-instruct
+NVIDIA_VISION_MODEL=meta/llama-3.2-11b-vision-instruct   # Multimodal image OCR for complex bills
+NVIDIA_MODEL=nvidia/llama-3.1-nemotron-70b-instruct      # Text reasoning
+
+# Option 3: Groq (Ultra-fast LLM text advisory)
+# Free at: https://console.groq.com/keys
+GROQ_API_KEY=gsk_...
+GROQ_MODEL=llama-3.3-70b-versatile
+
+# Option 4: AWS Bedrock (Claude 3.5 Sonnet for Vision & Strands Agents)
+AWS_ACCESS_KEY_ID=AKIA...
+AWS_SECRET_ACCESS_KEY=...
+AWS_REGION=us-east-1
+VISION_MODEL_ID=anthropic.claude-3-5-sonnet-20241022-v2:0
 
 # Photo scanning switch
 PHOTO_ENABLED=true
@@ -190,8 +213,9 @@ python -m pytest tests/ -v
 - ✅ `test_unknown_state`: Validates fallback to national average tariff and logs clear assumptions.
 - ✅ `test_subsidy_cap_at_3kw`: Confirms PM Surya Ghar ceiling of ₹78,000 for systems ≥ 3 kW.
 - ✅ `test_amount_only_mode`: Validates reverse-slab inversion round-trip (Amount → kWh → Bill).
-- ✅ `test_no_roof_branch`: Verifies alternative efficiency guidance when no roof is available.
-- ✅ `test_emi_calculation`: Tests loan amortization formula.
+- ✅ `test_rooftop_recommendation_always_active`: Confirms rooftop solar sizing and PM Surya Ghar roadmap are generated deterministically.
+- ✅ `test_emi_calculation`: Tests loan amortization formula at 5.75% p.a.
+- ✅ `test_rajasthan_tariff_and_high_yield`: Verifies Rajasthan DISCOM slabs and high solar irradiation calculation.
 - ✅ `test_api_endpoints`: Integration tests for `/`, `/config`, `/recommend`, and validation errors.
 
 ---
