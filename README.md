@@ -112,7 +112,7 @@ bijli-solar-advisor/
 ├── app.py                  # FastAPI server, routes, CORS, Starlette 1.x compatibility shim
 ├── calc.py                 # Pure calculation engine (sizing, tariffs, subsidy, EMI, reverse-slabs)
 ├── agent.py                # Multi-LLM agent dispatcher (Gemini, Groq, NVIDIA, Bedrock, template)
-├── extract.py              # Multimodal bill OCR engine (Gemini, Groq Vision, NVIDIA NeVA, Bedrock)
+├── extract.py              # Multimodal bill OCR engine (Gemini Vision, NVIDIA NIM Vision, Bedrock)
 ├── requirements.txt        # Python package dependencies
 ├── .env.example            # Environment variables template
 ├── .env                    # Local API keys (excluded from git)

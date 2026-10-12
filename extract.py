@@ -109,40 +109,6 @@ async def _extract_with_gemini(image_bytes: bytes, content_type: str) -> dict:
     raise last_exc or RuntimeError("All Gemini vision model candidates failed")
 
 
-async def _extract_with_groq(image_bytes: bytes, content_type: str) -> dict:
-    """Extract bill data using Groq vision (if supported by active key)."""
-    from groq import Groq
-
-    api_key = os.environ.get("GROQ_API_KEY")
-    client = Groq(api_key=api_key)
-
-    b64 = base64.b64encode(image_bytes).decode("utf-8")
-    mime = content_type or "image/jpeg"
-    data_url = f"data:{mime};base64,{b64}"
-
-    model_name = os.environ.get("GROQ_VISION_MODEL", "llama-3.2-11b-vision-preview")
-
-    resp = client.chat.completions.create(
-        model=model_name,
-        messages=[
-            {
-                "role": "user",
-                "content": [
-                    {"type": "text", "text": PROMPT_TEXT},
-                    {"type": "image_url", "image_url": {"url": data_url}},
-                ],
-            }
-        ],
-        response_format={"type": "json_object"},
-        temperature=0.0,
-    )
-
-    content = resp.choices[0].message.content or "{}"
-    parsed = _clean_json_response(content)
-    validated = BillExtraction(**parsed)
-    return validated.model_dump()
-
-
 async def _extract_with_nvidia(image_bytes: bytes, content_type: str) -> dict:
     """Extract bill data using free NVIDIA NIM Image-to-Text vision models."""
     from openai import OpenAI
@@ -224,7 +190,7 @@ async def _extract_with_bedrock(image_bytes: bytes, content_type: str) -> dict:
 
 async def extract_bill_data(image_bytes: bytes, content_type: str = "image/jpeg") -> dict:
     """
-    Send image to available free vision model (Gemini, Groq, NVIDIA) or Bedrock.
+    Send image to available free vision model (Gemini or NVIDIA NIM) or AWS Bedrock.
     Return dict with extracted fields + confidence.
     """
     if not PHOTO_ENABLED:
@@ -237,21 +203,14 @@ async def extract_bill_data(image_bytes: bytes, content_type: str = "image/jpeg"
         except Exception as exc:
             logger.warning("Gemini vision extraction failed (%s), trying fallbacks", exc)
 
-    # 2. Try Groq Vision
-    if os.environ.get("GROQ_API_KEY"):
-        try:
-            return await _extract_with_groq(image_bytes, content_type)
-        except Exception as exc:
-            logger.warning("Groq vision extraction failed (%s), trying fallbacks", exc)
-
-    # 3. Try NVIDIA Vision
+    # 2. Try NVIDIA NIM Vision
     if os.environ.get("NVIDIA_API_KEY"):
         try:
             return await _extract_with_nvidia(image_bytes, content_type)
         except Exception as exc:
             logger.warning("NVIDIA vision extraction failed (%s), trying fallbacks", exc)
 
-    # 4. Try AWS Bedrock
+    # 3. Try AWS Bedrock
     if os.environ.get("AWS_ACCESS_KEY_ID") or os.environ.get("AWS_PROFILE"):
         try:
             return await _extract_with_bedrock(image_bytes, content_type)
@@ -260,6 +219,6 @@ async def extract_bill_data(image_bytes: bytes, content_type: str = "image/jpeg"
 
     # If no provider is configured, return helpful guidance
     return {
-        "error": "No vision API key found. Add GEMINI_API_KEY (free at aistudio.google.com) or GROQ_API_KEY (free at console.groq.com) to your .env file to enable photo OCR.",
+        "error": "No vision API key found. Add GEMINI_API_KEY (free at aistudio.google.com) or NVIDIA_API_KEY (free at build.nvidia.com) to your .env file to enable photo OCR.",
         "confidence": 0.0,
     }
