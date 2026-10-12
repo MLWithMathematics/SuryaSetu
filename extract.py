@@ -34,24 +34,142 @@ class BillExtraction(BaseModel):
     error: Optional[str] = None
 
 
+DEVANAGARI_DIGITS = str.maketrans("०१२३४५६७८९", "0123456789")
+
+STATE_MAP = {
+    # Uttar Pradesh (UPPCL discoms)
+    "uttar pradesh": "UP",
+    "उत्तर प्रदेश": "UP",
+    "uppcl": "UP",
+    "pvvnl": "UP",
+    "mvvnl": "UP",
+    "dvvnl": "UP",
+    "puvvnl": "UP",
+    "kesco": "UP",
+    "पश्चिमांचल": "UP",
+    "मध्यांचल": "UP",
+    "दक्षिणांचल": "UP",
+    "पूर्वांचल": "UP",
+    # Rajasthan (JVVNL/AVVNL/JdVVNL)
+    "rajasthan": "RJ",
+    "राजस्थान": "RJ",
+    "jvvnl": "RJ",
+    "avvnl": "RJ",
+    "jdvvnl": "RJ",
+    "जयपुर": "RJ",
+    "अजमेर": "RJ",
+    "जोधपुर": "RJ",
+    # Maharashtra (MSEDCL)
+    "maharashtra": "MH",
+    "महाराष्ट्र": "MH",
+    "msedcl": "MH",
+    "mahavitaran": "MH",
+    "महावितरण": "MH",
+    "महाडिस्कॉम": "MH",
+    "best": "MH",
+    # Delhi (BSES/TPDDL)
+    "delhi": "DL",
+    "दिल्ली": "DL",
+    "bses": "DL",
+    "brpl": "DL",
+    "bypl": "DL",
+    "tpddl": "DL",
+    "tata power": "DL",
+}
+
+
 PROMPT_TEXT = (
-    "You are an expert OCR and electricity bill parser for Indian DISCOM bills (e.g. MSEDCL, UPPCL, BSES, JVVNL, TNEB, BESCOM, etc.). "
-    "Extract the following fields from this electricity bill and return ONLY a single valid JSON object:\n"
+    "You are an expert bilingual OCR and electricity bill parser specialized in Indian DISCOM bills "
+    "(such as UPPCL, JVVNL, MSEDCL, BSES, TPDDL, BESCOM, etc.).\n"
+    "Indian electricity bills are frequently printed in HINDI (हिंदी / देवनागरी लिपि), ENGLISH, or BILINGUALLY.\n"
+    "Carefully extract the bill details and return ONLY a single valid JSON object:\n"
     "{\n"
-    '  "state": "MH" | "RJ" | "UP" | "DL" | other 2-letter state code or null,\n'
+    '  "state": "UP" | "RJ" | "MH" | "DL" | other 2-letter state code or null,\n'
     '  "units_kwh": float or null,\n'
     '  "billing_days": integer or null,\n'
     '  "amount_payable": float or null,\n'
     '  "sanctioned_load_kw": float or null,\n'
     '  "fixed_charges": float or null,\n'
     '  "confidence": float between 0.0 and 1.0\n'
-    "}\n"
-    "Rules:\n"
-    "1. Look for 'Units consumed', 'Billed Units', 'Total consumption' for units_kwh.\n"
-    "2. If a value is missing or unclear, output null. Never guess or hallucinate.\n"
-    "3. Confidence should reflect overall legibility and extraction completeness.\n"
-    "4. Output strictly valid JSON without any markdown formatting or commentary."
+    "}\n\n"
+    "BILINGUAL FIELD MAPPING (Search for both Hindi and English terms):\n"
+    "1. STATE (state):\n"
+    "   - UP (Uttar Pradesh): UPPCL, पश्चिमांचल (PVVNL), मध्यांचल (MVVNL), दक्षिणांचल (DVVNL), पूर्वांचल (PUVVNL), केस्को (KESCO), उत्तर प्रदेश\n"
+    "   - RJ (Rajasthan): JVVNL, AVVNL, JdVVNL, जयपुर विद्युत, अजमेर विद्युत, जोधपुर विद्युत, राजस्थान\n"
+    "   - MH (Maharashtra): MSEDCL, Mahavitaran, महावितरण, महाडिस्कॉम, BEST, Tata Power, Adani, महाराष्ट्र\n"
+    "   - DL (Delhi): BSES (BRPL/BYPL), TPDDL (Tata Power-DDL), NDMC, दिल्ली\n\n"
+    "2. UNITS CONSUMED / BILLED (units_kwh):\n"
+    "   - In HINDI: 'उपभोग यूनिट', 'खपत यूनिट', 'कुल यूनिट', 'बिल यूनिट', 'खपत', 'प्रयुक्त यूनिट', 'वास्तविक खपत', 'यूनिट (kWh)'\n"
+    "   - In ENGLISH: 'Billed Units', 'Units Consumed', 'Total Consumption', 'Active Energy Consumption', 'Units (kWh)', 'kWh'\n"
+    "   - If not labeled directly, calculate: Current Reading (वर्तमान पठन) - Previous Reading (पिछला पठन).\n\n"
+    "3. TOTAL AMOUNT PAYABLE (amount_payable):\n"
+    "   - In HINDI: 'कुल देय राशि', 'देय राशि', 'कुल धनराशि', 'भुगतान राशि', 'अंतिम देय राशि', 'शुद्ध देय राशि', 'वर्तमान बिल राशि'\n"
+    "   - In ENGLISH: 'Total Amount Payable', 'Net Payable', 'Total Bill Amount', 'Amount Due', 'Net Amount', 'Total (₹)'\n\n"
+    "4. SANCTIONED LOAD (sanctioned_load_kw):\n"
+    "   - In HINDI: 'स्वीकृत भार', 'स्वीकृत लोड', 'अनुबंधित भार', 'संवितरित भार', 'भार (kW / किलोवाट / HP)'\n"
+    "   - In ENGLISH: 'Sanctioned Load', 'Connected Load', 'Contract Demand', 'Load (kW)'\n"
+    "   - If load is in HP (हॉर्सपावर), multiply by 0.746 to convert to kW.\n\n"
+    "5. FIXED CHARGES (fixed_charges):\n"
+    "   - In HINDI: 'स्थायी शुल्क', 'नियत शुल्क', 'नियत प्रभार', 'मांग प्रभार'\n"
+    "   - In ENGLISH: 'Fixed Charges', 'Demand Charges', 'Meter Rent'\n\n"
+    "6. BILLING DAYS (billing_days):\n"
+    "   - In HINDI: 'बिल अवधि', 'बिलिंग दिन', 'दिन'\n"
+    "   - In ENGLISH: 'Billing Days', 'Bill Period Days', 'Days' (defaults to 30 if not specified)\n\n"
+    "NUMERIC & DEVANAGARI RULES:\n"
+    "- If numbers appear in Devanagari numerals (०,१,२,३,४,५,६,७,८,९), convert them to Arabic numerals (0-9).\n"
+    "- Output ONLY the raw JSON object without markdown code blocks, backticks, or conversational preamble."
 )
+
+
+def _normalize_extracted_dict(data: dict) -> dict:
+    """Normalize state codes, Devanagari numerals, currency symbols, and units."""
+    if not isinstance(data, dict):
+        return {}
+
+    clean = {}
+
+    # State normalization
+    raw_state = str(data.get("state") or "").strip().lower()
+    clean_state = None
+    for pattern, code in STATE_MAP.items():
+        if pattern in raw_state:
+            clean_state = code
+            break
+    if not clean_state:
+        # Check standard 2-letter uppercase codes
+        candidate = raw_state.strip().upper()
+        if candidate in ["MH", "RJ", "UP", "DL", "GJ", "MP", "HR", "PB", "KA", "TN", "KL", "WB"]:
+            clean_state = candidate
+    clean["state"] = clean_state
+
+    # Number cleaning helper
+    def parse_num(val) -> Optional[float]:
+        if val is None:
+            return None
+        if isinstance(val, (int, float)):
+            return float(val)
+        s = str(val).translate(DEVANAGARI_DIGITS)
+        s = re.sub(r"[₹$,\sA-Za-z\/\-\u0900-\u097F]", "", s)
+        m = re.search(r"\d+(\.\d+)?", s)
+        if m:
+            try:
+                return float(m.group(0))
+            except ValueError:
+                return None
+        return None
+
+    clean["units_kwh"] = parse_num(data.get("units_kwh") or data.get("units"))
+    clean["amount_payable"] = parse_num(data.get("amount_payable") or data.get("amount"))
+    clean["sanctioned_load_kw"] = parse_num(data.get("sanctioned_load_kw") or data.get("sanctioned_load") or data.get("load"))
+    clean["fixed_charges"] = parse_num(data.get("fixed_charges"))
+
+    raw_days = parse_num(data.get("billing_days") or data.get("days"))
+    clean["billing_days"] = int(round(raw_days)) if raw_days is not None else None
+
+    raw_conf = parse_num(data.get("confidence"))
+    clean["confidence"] = min(1.0, max(0.0, raw_conf)) if raw_conf is not None else 0.85
+
+    return clean
 
 
 def _clean_json_response(raw_text: str) -> dict:
@@ -60,7 +178,8 @@ def _clean_json_response(raw_text: str) -> dict:
     match = re.search(r"\{[\s\S]*\}", raw)
     if match:
         try:
-            return json.loads(match.group(0))
+            parsed = json.loads(match.group(0))
+            return _normalize_extracted_dict(parsed)
         except Exception:
             pass
     if raw.startswith("```"):
@@ -70,7 +189,11 @@ def _clean_json_response(raw_text: str) -> dict:
         if lines and lines[-1].startswith("```"):
             lines = lines[:-1]
         raw = "\n".join(lines).strip()
-    return json.loads(raw)
+    try:
+        parsed = json.loads(raw)
+        return _normalize_extracted_dict(parsed)
+    except Exception:
+        return {}
 
 
 async def _extract_with_gemini(image_bytes: bytes, content_type: str) -> dict:
